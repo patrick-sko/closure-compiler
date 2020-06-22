@@ -19,6 +19,7 @@ package com.google.javascript.jscomp;
 import static com.google.common.base.Preconditions.checkState;
 
 import com.google.common.annotations.GwtIncompatible;
+import com.google.javascript.jscomp.CompilerOptions.InstrumentOption;
 import com.google.javascript.rhino.IR;
 import com.google.javascript.rhino.Node;
 import java.util.LinkedHashMap;
@@ -35,12 +36,6 @@ class CoverageInstrumentationPass implements CompilerPass {
   private final CoverageReach reach;
   private final InstrumentOption instrumentOption;
 
-  public enum InstrumentOption {
-    NONE,
-    LINE_ONLY,  // Collect coverage for every executable statement.
-    BRANCH_ONLY  // Collect coverage for control-flow branches.
-  }
-
   public static final String JS_INSTRUMENTATION_OBJECT_NAME = "__jscov";
 
   public enum CoverageReach {
@@ -48,21 +43,6 @@ class CoverageInstrumentationPass implements CompilerPass {
     CONDITIONAL  // Do not instrument global statements.
   }
 
-  public static InstrumentOption fromString(String value) {
-    if (value == null) {
-      return null;
-    }
-    switch (value) {
-      case "NONE":
-        return InstrumentOption.NONE;
-      case "LINE":
-        return InstrumentOption.LINE_ONLY;
-      case "BRANCH":
-        return InstrumentOption.BRANCH_ONLY;
-      default:
-        return null;
-    }
-  }
 
   /**
    * @param compiler the compiler which generates the AST.

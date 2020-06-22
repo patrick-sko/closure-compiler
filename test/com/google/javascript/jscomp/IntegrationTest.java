@@ -2220,16 +2220,6 @@ public final class IntegrationTest extends IntegrationTestCase {
   }
 
   @Test
-  public void testShadowVaribles() {
-    CompilerOptions options = createCompilerOptions();
-    options.setVariableRenaming(VariableRenamingPolicy.LOCAL);
-    options.shadowVariables = true;
-    String code =     "var f = function(x) { return function(y) {}}";
-    String expected = "var f = function(a) { return function(a) {}}";
-    test(options, code, expected);
-  }
-
-  @Test
   public void testRenameLabels() {
     CompilerOptions options = createCompilerOptions();
     String code = "longLabel: for(;true;) { break longLabel; }";
@@ -2990,13 +2980,8 @@ public final class IntegrationTest extends IntegrationTestCase {
     options.setFoldConstants(true);
     options.syntheticBlockStartMarker = "START";
     options.syntheticBlockEndMarker = "END";
-    options.aggressiveFusion = false;
     testSame(options, "for(;;) { x = 1; {START(); {z = 3} END()} }");
     testSame(options, "x = 1; y = 2; {START(); {z = 3} END()} f()");
-    options.aggressiveFusion = true;
-    testSame(options, "x = 1; {START(); {z = 3} END()} f()");
-    test(options, "x = 1; y = 3; {START(); {z = 3} END()} f()",
-                  "x = 1, y = 3; {START(); {z = 3} END()} f()");
   }
 
   @Test
@@ -3401,7 +3386,7 @@ public final class IntegrationTest extends IntegrationTestCase {
             "function some_function() {",
             "  if (any_expression) {",
             "    var b = external_ref;",
-            "    var a = function(a) {",
+            "    var a = function(c) {",
             "      return b()",
             "    };",
             "  }",
@@ -4320,5 +4305,33 @@ public final class IntegrationTest extends IntegrationTestCase {
         options,
         lines("const array = Array.of('1', '2', '3');", "if (array[0] - 1) {}"),
         TypeValidator.INVALID_OPERAND_TYPE);
+  }
+
+  @Test
+  public void testNewTarget() {
+    // Repro case for Github issue 3607.  Don't crash with a reference to new.target
+    CompilerOptions options = createCompilerOptions();
+    CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options);
+    options.setLanguageIn(LanguageMode.ECMASCRIPT_NEXT_IN);
+    options.setLanguageOut(LanguageMode.ECMASCRIPT_NEXT);
+    WarningLevel.QUIET.setOptionsForWarningLevel(options);
+    test(
+        options,
+        lines(
+            "",
+            "window.Class = class {",
+            "  constructor() {",
+            "    let newTarget = new.target;",
+            "    return Object.create(newTarget.prototype);",
+            "  }",
+            "};"),
+        lines(
+            "",
+            "window.a = class {",
+            "  constructor() {",
+            "    let b = new.target;",
+            "    return Object.create(b.prototype);",
+            "  }",
+            "};"));
   }
 }

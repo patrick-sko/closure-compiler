@@ -39,6 +39,7 @@
 package com.google.javascript.rhino.jstype;
 
 import static com.google.common.truth.Truth.assertThat;
+import static com.google.javascript.rhino.testing.TypeSubject.assertType;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.javascript.rhino.testing.Asserts;
@@ -152,6 +153,25 @@ public class BigIntTypeTest extends BaseJSTypeTestCase {
     assertThat(BIGINT_OBJECT_TYPE.isSymbolValueType()).isFalse();
     assertThat(BIGINT_OBJECT_TYPE.isUnionType()).isFalse();
     assertThat(BIGINT_OBJECT_TYPE.isVoidType()).isFalse();
+  }
+
+  @Test
+  public void testIsOnlyBigInt() {
+    assertType(BIGINT_TYPE).isOnlyBigInt();
+    assertType(BIGINT_OBJECT_TYPE).isOnlyBigInt();
+    assertType(ALL_TYPE).isNotOnlyBigInt();
+    assertType(UNKNOWN_TYPE).isNotOnlyBigInt();
+    assertType(NO_TYPE).isNotOnlyBigInt();
+    assertType(createUnionType(BIGINT_TYPE, BIGINT_OBJECT_TYPE)).isNotOnlyBigInt();
+    assertType(BIGINT_NUMBER).isNotOnlyBigInt();
+    assertType(registry.createEnumType("Enum", null, BIGINT_TYPE).getElementsType())
+        .isNotOnlyBigInt();
+    assertType(registry.createEnumType("Enum", null, NUMBER_TYPE).getElementsType())
+        .isNotOnlyBigInt();
+    assertType(registry.createEnumType("Enum", null, BIGINT_NUMBER).getElementsType())
+        .isNotOnlyBigInt();
+    assertType(registry.createEnumType("Enum", null, NUMBER_STRING).getElementsType())
+        .isNotOnlyBigInt();
   }
 
   @Test
@@ -354,11 +374,11 @@ public class BigIntTypeTest extends BaseJSTypeTestCase {
 
   @Test
   public void testMatchesXxx() {
-    assertThat(BIGINT_TYPE.matchesNumberContext()).isTrue();
+    assertThat(BIGINT_TYPE.matchesNumberContext()).isFalse();
     assertThat(BIGINT_TYPE.matchesObjectContext()).isTrue();
     assertThat(BIGINT_TYPE.matchesStringContext()).isTrue();
     assertThat(BIGINT_TYPE.matchesSymbolContext()).isFalse();
-    assertThat(BIGINT_OBJECT_TYPE.matchesNumberContext()).isTrue();
+    assertThat(BIGINT_OBJECT_TYPE.matchesNumberContext()).isFalse();
     assertThat(BIGINT_OBJECT_TYPE.matchesObjectContext()).isTrue();
     assertThat(BIGINT_OBJECT_TYPE.matchesStringContext()).isTrue();
     assertThat(BIGINT_OBJECT_TYPE.matchesSymbolContext()).isFalse();

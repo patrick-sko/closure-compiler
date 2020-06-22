@@ -79,6 +79,24 @@ public abstract class CompilerTestCase {
   /** Libraries to inject before typechecking */
   final Set<String> librariesToInject;
 
+  /**
+   * If non-null, this object will be used to convert non-optional chains to optional ones
+   * immediately after parsing test JS code. Then it will be used to convert optional chains to
+   * non-optional ones in the result JS code before comparing it to the expected result.
+   *
+   * <p>The intent of this feature is to allow a developer to temporarily run all the existing tests
+   * for a pass as if they were written with lots of optional chains in them, in order to discover
+   * parts of the code that need updating to handle optional chains. No test cases should be checked
+   * in with this set to anything other than null.
+   *
+   * <p>TODO(b/145761297): Remove this when support for optional chaining is complete.
+   */
+  private AstChainOptionalizer astChainOptionalizer;
+
+  void setAstChainOptionalizer(AstChainOptionalizer astChainOptionalizer) {
+    this.astChainOptionalizer = astChainOptionalizer;
+  }
+
   /** Whether to include synthetic code when comparing actual to expected */
   private boolean compareSyntheticCode;
 
@@ -1541,6 +1559,13 @@ public abstract class CompilerTestCase {
     Node externsRootClone = rootClone.getFirstChild();
     Node mainRootClone = rootClone.getLastChild();
 
+    if (astChainOptionalizer != null) {
+      // Convert all non-optional chains to optional ones in order to use existing tests
+      // as if they had lots of optional chains in them.
+      // TODO(b/145761297): Remove this when support for optional chaining is complete.
+      astChainOptionalizer.optionalize(compiler, mainRoot);
+    }
+
     int numRepetitions = getNumRepetitions();
     ErrorManager[] errorManagers = new ErrorManager[numRepetitions];
     int aggregateWarningCount = 0;
@@ -1709,6 +1734,13 @@ public abstract class CompilerTestCase {
               .process(externsRoot, mainRoot);
         }
       }
+    }
+
+    if (astChainOptionalizer != null) {
+      // Convert all optional chains in the resulting JS back to non-optional ones before
+      // comparing with the expected result.
+      // TODO(b/145761297): Remove this when support for optional chaining is complete.
+      astChainOptionalizer.deoptionalize(compiler, mainRoot);
     }
 
     if (expectedErrors.isEmpty()) {
@@ -2064,80 +2096,6 @@ public abstract class CompilerTestCase {
             .isEqualTo(warning);
       }
     }
-  }
-
-  /**
-   * Generates a list of modules from a list of inputs, such that each module
-   * depends on the module before it.
-   */
-  protected static JSModule[] createModuleChain(String... inputs) {
-    return createModuleChain(Arrays.asList(inputs), "i", ".js");
-  }
-
-  protected static JSModule[] createModuleChain(
-      List<String> inputs, String fileNamePrefix, String fileNameSuffix) {
-    JSModule[] modules = createModules(inputs, fileNamePrefix, fileNameSuffix);
-    for (int i = 1; i < modules.length; i++) {
-      modules[i].addDependency(modules[i - 1]);
-    }
-    return modules;
-  }
-
-  /**
-   * Generates a list of modules from a list of inputs, such that each module
-   * depends on the first module.
-   */
-  protected static JSModule[] createModuleStar(String... inputs) {
-    JSModule[] modules = createModules(inputs);
-    for (int i = 1; i < modules.length; i++) {
-      modules[i].addDependency(modules[0]);
-    }
-    return modules;
-  }
-
-  /**
-   * Generates a list of modules from a list of inputs, such that modules
-   * form a bush formation. In a bush formation, module 2 depends
-   * on module 1, and all other modules depend on module 2.
-   */
-  protected static JSModule[] createModuleBush(String... inputs) {
-    checkState(inputs.length > 2);
-    JSModule[] modules = createModules(inputs);
-    for (int i = 1; i < modules.length; i++) {
-      modules[i].addDependency(modules[i == 1 ? 0 : 1]);
-    }
-    return modules;
-  }
-
-  /**
-   * Generates a list of modules from a list of inputs, such that modules
-   * form a tree formation. In a tree formation, module N depends on
-   * module `floor(N/2)`, So the modules form a balanced binary tree.
-   */
-  protected static JSModule[] createModuleTree(String... inputs) {
-    JSModule[] modules = createModules(inputs);
-    for (int i = 1; i < modules.length; i++) {
-      modules[i].addDependency(modules[(i - 1) / 2]);
-    }
-    return modules;
-  }
-
-  /**
-   * Generates a list of modules from a list of inputs. Does not generate any
-   * dependencies between the modules.
-   */
-  protected static JSModule[] createModules(String... inputs) {
-    return createModules(Arrays.asList(inputs), "i", ".js");
-  }
-
-  protected static JSModule[] createModules(
-      List<String> inputs, String fileNamePrefix, String fileNameSuffix) {
-    JSModule[] modules = new JSModule[inputs.size()];
-    for (int i = 0; i < inputs.size(); i++) {
-      JSModule module = modules[i] = new JSModule("m" + i);
-      module.add(SourceFile.fromCode(fileNamePrefix + i + fileNameSuffix, inputs.get(i)));
-    }
-    return modules;
   }
 
   protected Compiler createCompiler() {

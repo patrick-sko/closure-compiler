@@ -269,6 +269,11 @@ public abstract class JSType implements Serializable {
         || isSubtypeOf(getNativeType(JSTypeNative.SYMBOL_OBJECT_TYPE));
   }
 
+  /** Checks whether the type is a bigint and *only* a bigint (value or Object). */
+  public final boolean isOnlyBigInt() {
+    return isBigIntValueType() || isBigIntObjectType();
+  }
+
   public boolean isArrayType() {
     return false;
   }

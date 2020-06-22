@@ -29,10 +29,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.javascript.jscomp.AbstractCompiler.LifeCycleStage;
 import com.google.javascript.jscomp.CompilerOptions.ExtractPrototypeMemberDeclarationsMode;
+import com.google.javascript.jscomp.CompilerOptions.InstrumentOption;
 import com.google.javascript.jscomp.CompilerOptions.PropertyCollapseLevel;
 import com.google.javascript.jscomp.CompilerOptions.Reach;
 import com.google.javascript.jscomp.CoverageInstrumentationPass.CoverageReach;
-import com.google.javascript.jscomp.CoverageInstrumentationPass.InstrumentOption;
 import com.google.javascript.jscomp.ExtractPrototypeMemberDeclarations.Pattern;
 import com.google.javascript.jscomp.NodeTraversal.Callback;
 import com.google.javascript.jscomp.ScopedAliases.InvalidModuleGetHandling;
@@ -299,9 +299,7 @@ public final class DefaultPassConfig extends PassConfig {
 
     checks.add(checkVariableReferences);
 
-    if (options.declaredGlobalExternsOnWindow) {
-      checks.add(declaredGlobalExternsOnWindow);
-    }
+    checks.add(declaredGlobalExternsOnWindow);
 
     if (!options.processCommonJSModules) {
       // TODO(ChadKillingsworth): move CommonJS module rewriting after VarCheck
@@ -572,12 +570,15 @@ public final class DefaultPassConfig extends PassConfig {
       passes.add(j2clUtilGetDefineRewriterPass);
     }
 
-    /*
     if (options.instrumentForCoverage) {
-      passes.add(instrumentForCodeCoverage);
-    }*/
+      if (options.instrumentBranchCoverage) {
+        options.setInstrumentForCoverageOption(InstrumentOption.BRANCH_ONLY);
+      } else {
+        options.setInstrumentForCoverageOption(InstrumentOption.LINE_ONLY);
+      }
+    }
 
-    if(options.instrumentForCoverageOption != null && options.instrumentForCoverageOption != InstrumentOption.NONE){
+    if (options.getInstrumentForCoverageOption() != InstrumentOption.NONE) {
       passes.add(instrumentForCodeCoverage);
     }
 
@@ -1694,7 +1695,7 @@ public final class DefaultPassConfig extends PassConfig {
                 return new PeepholeOptimizationsPass(
                     compiler,
                     "latePeepholeOptimizations",
-                    new StatementFusion(options.aggressiveFusion),
+                    new StatementFusion(),
                     new PeepholeRemoveDeadCode(),
                     new PeepholeMinimizeConditions(late),
                     new PeepholeSubstituteAlternateSyntax(late),
@@ -2721,7 +2722,6 @@ public final class DefaultPassConfig extends PassConfig {
         options.variableRenaming == VariableRenamingPolicy.LOCAL,
         preserveAnonymousFunctionNames,
         options.generatePseudoNames,
-        options.shadowVariables,
         options.preferStableNames,
         prevVariableMap,
         reservedChars,
@@ -2768,7 +2768,7 @@ public final class DefaultPassConfig extends PassConfig {
           .setInternalFactory(
               (compiler) -> {
                 // TODO(johnlenz): make global instrumentation an option
-                return new CoverageInstrumentationPass(compiler, CoverageReach.CONDITIONAL, options.instrumentForCoverageOption);
+                return new CoverageInstrumentationPass(compiler, CoverageReach.CONDITIONAL, options.getInstrumentForCoverageOption());
               })
           .setFeatureSetForOptimizations()
           .build();

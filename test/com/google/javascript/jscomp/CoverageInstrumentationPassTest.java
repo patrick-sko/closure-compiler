@@ -16,7 +16,7 @@
 package com.google.javascript.jscomp;
 
 import com.google.javascript.jscomp.CompilerOptions.LanguageMode;
-import com.google.javascript.jscomp.CoverageInstrumentationPass.InstrumentOption;
+import com.google.javascript.jscomp.CompilerOptions.InstrumentOption;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -66,6 +66,7 @@ public final class CoverageInstrumentationPassTest {
   }
 
   // If the body of the arrow function is a block, it is instrumented.
+
   @Test
   public void testArrowFunction_block() throws Exception {
     compareArrowOneMode(LanguageMode.ECMASCRIPT_2015, "CoverageInstrumentationPassTest/ArrowBlock");

@@ -24,13 +24,17 @@ import static com.google.javascript.jscomp.CompilerTypeTestCase.lines;
 import static com.google.javascript.jscomp.testing.ScopeSubject.assertScope;
 import static com.google.javascript.rhino.jstype.JSTypeNative.ALL_TYPE;
 import static com.google.javascript.rhino.jstype.JSTypeNative.ARRAY_TYPE;
+import static com.google.javascript.rhino.jstype.JSTypeNative.BIGINT_NUMBER;
+import static com.google.javascript.rhino.jstype.JSTypeNative.BIGINT_OBJECT_TYPE;
 import static com.google.javascript.rhino.jstype.JSTypeNative.BIGINT_TYPE;
 import static com.google.javascript.rhino.jstype.JSTypeNative.BOOLEAN_TYPE;
 import static com.google.javascript.rhino.jstype.JSTypeNative.CHECKED_UNKNOWN_TYPE;
 import static com.google.javascript.rhino.jstype.JSTypeNative.FUNCTION_TYPE;
 import static com.google.javascript.rhino.jstype.JSTypeNative.NO_RESOLVED_TYPE;
+import static com.google.javascript.rhino.jstype.JSTypeNative.NO_TYPE;
 import static com.google.javascript.rhino.jstype.JSTypeNative.NULL_TYPE;
 import static com.google.javascript.rhino.jstype.JSTypeNative.NUMBER_OBJECT_TYPE;
+import static com.google.javascript.rhino.jstype.JSTypeNative.NUMBER_STRING;
 import static com.google.javascript.rhino.jstype.JSTypeNative.NUMBER_TYPE;
 import static com.google.javascript.rhino.jstype.JSTypeNative.OBJECT_TYPE;
 import static com.google.javascript.rhino.jstype.JSTypeNative.STRING_OBJECT_TYPE;
@@ -49,6 +53,7 @@ import com.google.javascript.jscomp.CodingConvention.AssertionFunctionLookup;
 import com.google.javascript.jscomp.CompilerOptions.LanguageMode;
 import com.google.javascript.jscomp.DataFlowAnalysis.BranchedFlowState;
 import com.google.javascript.jscomp.NodeTraversal.AbstractPostOrderCallback;
+import com.google.javascript.jscomp.TypeInference.BigIntPresence;
 import com.google.javascript.jscomp.deps.ModuleLoader.ResolutionMode;
 import com.google.javascript.jscomp.modules.ModuleMapCreator;
 import com.google.javascript.jscomp.testing.ScopeSubject;
@@ -58,6 +63,7 @@ import com.google.javascript.rhino.ClosurePrimitive;
 import com.google.javascript.rhino.IR;
 import com.google.javascript.rhino.Node;
 import com.google.javascript.rhino.Token;
+import com.google.javascript.rhino.jstype.EnumElementType;
 import com.google.javascript.rhino.jstype.EnumType;
 import com.google.javascript.rhino.jstype.FunctionType;
 import com.google.javascript.rhino.jstype.JSType;
@@ -1056,7 +1062,7 @@ public final class TypeInferenceTest {
   }
 
   @Test
-  public void testAssertBigInt_narrowsFromUnknownType() {
+  public void testBigIntTypeAssignment() {
     assuming("x", UNKNOWN_TYPE);
     assuming("y", UNKNOWN_TYPE);
 
@@ -1076,6 +1082,197 @@ public final class TypeInferenceTest {
 
     verify("out1", startType);
     verify("out2", BIGINT_TYPE);
+  }
+
+  @Test
+  public void testBigIntPresence() {
+    // Standard types
+    testForAllBigInt(getNativeType(BIGINT_TYPE));
+    testForAllBigInt(getNativeType(BIGINT_OBJECT_TYPE));
+    testForNoBigInt(getNativeType(NUMBER_TYPE));
+    testForNoBigInt(getNativeType(STRING_TYPE));
+    testForNoBigInt(getNativeType(ALL_TYPE));
+    testForNoBigInt(getNativeType(UNKNOWN_TYPE));
+    testForNoBigInt(getNativeType(NO_TYPE));
+
+    // Unions
+    testForAllBigInt(createUnionType(BIGINT_TYPE, BIGINT_OBJECT_TYPE));
+    testForBigIntOrNumber(getNativeType(BIGINT_NUMBER));
+    testForBigIntOrOther(createUnionType(BIGINT_TYPE, STRING_TYPE));
+    testForNoBigInt(getNativeType(NUMBER_STRING));
+
+    // Union within union
+    testForBigIntOrNumber(createUnionType(NUMBER_OBJECT_TYPE, BIGINT_NUMBER));
+    testForBigIntOrNumber(createUnionType(BIGINT_OBJECT_TYPE, BIGINT_NUMBER));
+    testForBigIntOrNumber(
+        registry.createUnionType(
+            getNativeType(NUMBER_TYPE), createUnionType(BIGINT_TYPE, BIGINT_OBJECT_TYPE)));
+    testForBigIntOrNumber(
+        registry.createUnionType(
+            getNativeType(BIGINT_TYPE), createUnionType(NUMBER_TYPE, NUMBER_OBJECT_TYPE)));
+    testForBigIntOrOther(
+        registry.createUnionType(
+            getNativeType(BIGINT_TYPE), createUnionType(STRING_TYPE, STRING_OBJECT_TYPE)));
+
+    // Enum within union
+    testForAllBigInt(
+        registry.createUnionType(
+            getNativeType(BIGINT_OBJECT_TYPE),
+            createEnumType("Enum", BIGINT_TYPE).getElementsType()));
+    testForBigIntOrNumber(
+        registry.createUnionType(
+            getNativeType(BIGINT_TYPE), createEnumType("Enum", NUMBER_TYPE).getElementsType()));
+    testForBigIntOrOther(
+        registry.createUnionType(
+            getNativeType(BIGINT_TYPE), createEnumType("Enum", STRING_TYPE).getElementsType()));
+
+    // Standard enum
+    testForAllBigInt(createEnumType("Enum", BIGINT_TYPE).getElementsType());
+    testForNoBigInt(createEnumType("Enum", NUMBER_TYPE).getElementsType());
+
+    // Enum within enum
+    testForAllBigInt(
+        createEnumType("Enum", createEnumType("Enum", BIGINT_TYPE).getElementsType())
+            .getElementsType());
+    testForNoBigInt(
+        createEnumType("Enum", createEnumType("Enum", NUMBER_TYPE).getElementsType())
+            .getElementsType());
+
+    // Union within enum
+    testForAllBigInt(
+        createEnumType("Enum", createUnionType(BIGINT_TYPE, BIGINT_OBJECT_TYPE)).getElementsType());
+    testForBigIntOrNumber(createEnumType("Enum", BIGINT_NUMBER).getElementsType());
+    testForBigIntOrOther(
+        createEnumType("Enum", createUnionType(BIGINT_TYPE, STRING_TYPE)).getElementsType());
+  }
+
+  @Test
+  public void testBigIntWithUnaryPlus() {
+    assuming("x", BIGINT_TYPE);
+    assuming("y", BIGINT_OBJECT_TYPE);
+    assuming("z", BIGINT_NUMBER);
+
+    inFunction("valueType = +x; objectType = +y; unionType = +z;");
+
+    // Unary plus throws an exception when applied to a BigInt, so there is no valid type for its
+    // result.
+    verify("valueType", NO_TYPE);
+    verify("objectType", NO_TYPE);
+    verify("unionType", NO_TYPE);
+  }
+
+  @Test
+  public void testBigIntEnumWithUnaryPlus() {
+    EnumElementType enumElementBigIntType = createEnumType("MyEnum", BIGINT_TYPE).getElementsType();
+    EnumElementType enumElementUnionType =
+        createEnumType("MyEnum", BIGINT_NUMBER).getElementsType();
+    assuming("x", enumElementBigIntType);
+    assuming("y", registry.createUnionType(enumElementBigIntType, getNativeType(NUMBER_TYPE)));
+    assuming("z", enumElementUnionType);
+
+    inFunction("enumElementBigIntType = +x; unionEnumType = +y; enumElementUnionType = +z;");
+
+    // Unary plus throws an exception when applied to a BigInt, so there is no valid type for its
+    // result.
+    verify("enumElementBigIntType", NO_TYPE);
+    verify("unionEnumType", NO_TYPE);
+    verify("enumElementUnionType", NO_TYPE);
+  }
+
+  @Test
+  public void testBigIntWithLogicalNOT() {
+    assuming("x", BIGINT_TYPE);
+    assuming("y", BIGINT_OBJECT_TYPE);
+    assuming("z", BIGINT_NUMBER);
+
+    inFunction("valueType = !x; objectType = !y; unionType = !z;");
+
+    verify("valueType", BOOLEAN_TYPE);
+    verify("objectType", BOOLEAN_TYPE);
+    verify("unionType", BOOLEAN_TYPE);
+  }
+
+  @Test
+  public void testBigIntWithTypeOfOperation() {
+    assuming("x", BIGINT_TYPE);
+    assuming("y", BIGINT_OBJECT_TYPE);
+    assuming("z", createUnionType(BIGINT_TYPE, BIGINT_OBJECT_TYPE));
+
+    inFunction("valueType = typeof x; objectType = typeof y; unionType = typeof z;");
+
+    verify("valueType", STRING_TYPE);
+    verify("objectType", STRING_TYPE);
+    verify("unionType", STRING_TYPE);
+  }
+
+  @Test
+  public void testBigIntWithDeleteOperation() {
+    assuming("x", BIGINT_TYPE);
+    assuming("y", BIGINT_OBJECT_TYPE);
+    assuming("z", createUnionType(BIGINT_TYPE, BIGINT_OBJECT_TYPE));
+
+    inFunction("valueType = delete x; objectType = delete y; unionType = delete z;");
+
+    verify("valueType", BOOLEAN_TYPE);
+    verify("objectType", BOOLEAN_TYPE);
+    verify("unionType", BOOLEAN_TYPE);
+  }
+
+  @Test
+  public void testBigIntWithVoidOperation() {
+    assuming("x", BIGINT_TYPE);
+    assuming("y", BIGINT_OBJECT_TYPE);
+    assuming("z", createUnionType(BIGINT_TYPE, BIGINT_OBJECT_TYPE));
+
+    inFunction("valueType = void x; objectType = void y; unionType = void z;");
+
+    verify("valueType", VOID_TYPE);
+    verify("objectType", VOID_TYPE);
+    verify("unionType", VOID_TYPE);
+  }
+
+  @Test
+  public void testBigIntWithUnaryMinus() {
+    assuming("x", BIGINT_TYPE);
+    assuming("y", BIGINT_OBJECT_TYPE);
+    assuming("u", UNKNOWN_TYPE);
+    assuming("a", ALL_TYPE);
+    assuming("z1", BIGINT_NUMBER);
+    // testing for a union between bigint and anything but number
+    assuming("z2", createUnionType(BIGINT_TYPE, STRING_TYPE));
+
+    inFunction(
+        "valueType = -x; objectType = -y; unknownType = -u; allType = -a; bigintNum = -z1;"
+            + " bigintOther = -z2;");
+
+    verify("valueType", BIGINT_TYPE);
+    verify("objectType", BIGINT_TYPE);
+    verify("unknownType", NUMBER_TYPE);
+    verify("allType", NUMBER_TYPE);
+    verify("bigintNum", BIGINT_NUMBER);
+    verify("bigintOther", BIGINT_NUMBER);
+  }
+
+  @Test
+  public void testBigIntWithBitwiseNOT() {
+    assuming("x", BIGINT_TYPE);
+    assuming("y", BIGINT_OBJECT_TYPE);
+    assuming("u", UNKNOWN_TYPE);
+    assuming("a", ALL_TYPE);
+    assuming("z1", createUnionType(BIGINT_TYPE, NUMBER_TYPE));
+    // testing for a union between bigint and anything but number
+    assuming("z2", createUnionType(BIGINT_TYPE, STRING_TYPE));
+
+    inFunction(
+        "valueType = ~x; objectType = ~y; unknownType = ~u; allType = ~a; bigintOrNumber = ~z1;"
+            + " bigintOrOther = ~z2;");
+
+    verify("valueType", BIGINT_TYPE);
+    verify("objectType", BIGINT_TYPE);
+    verify("unknownType", NUMBER_TYPE);
+    verify("allType", NUMBER_TYPE);
+    verify("bigintOrNumber", createUnionType(BIGINT_TYPE, NUMBER_TYPE));
+    verify("bigintOrOther", createUnionType(BIGINT_TYPE, NUMBER_TYPE));
   }
 
   @Test
@@ -3294,6 +3491,22 @@ public final class TypeInferenceTest {
 
     assertTypeOfExpression("FOO").isNumber();
     assertTypeOfExpression("BAR").isNumber();
+  }
+
+  private static void testForAllBigInt(JSType type) {
+    assertThat(TypeInference.getBigIntPresence(type)).isEqualTo(BigIntPresence.ALL_BIGINT);
+  }
+
+  private static void testForNoBigInt(JSType type) {
+    assertThat(TypeInference.getBigIntPresence(type)).isEqualTo(BigIntPresence.NO_BIGINT);
+  }
+
+  private static void testForBigIntOrNumber(JSType type) {
+    assertThat(TypeInference.getBigIntPresence(type)).isEqualTo(BigIntPresence.BIGINT_OR_NUMBER);
+  }
+
+  private static void testForBigIntOrOther(JSType type) {
+    assertThat(TypeInference.getBigIntPresence(type)).isEqualTo(BigIntPresence.BIGINT_OR_OTHER);
   }
 
   private ObjectType getNativeObjectType(JSTypeNative t) {

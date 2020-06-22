@@ -149,6 +149,10 @@ public final class TypeCheck implements NodeTraversal.Callback, CompilerPass {
           "JSC_BAD_TYPE_FOR_BIT_OPERATION",
           "operator {0} cannot be applied to {1}");
 
+  static final DiagnosticType UNARY_OPERATION =
+      DiagnosticType.warning(
+          "JSC_BAD_TYPE_FOR_UNARY_OPERATION", "unary operator {0} cannot be applied to {1}");
+
   static final DiagnosticType NOT_CALLABLE =
       DiagnosticType.warning(
           "JSC_NOT_FUNCTION_TYPE",
@@ -336,6 +340,7 @@ public final class TypeCheck implements NodeTraversal.Callback, CompilerPass {
           NOT_A_CONSTRUCTOR,
           INSTANTIATE_ABSTRACT_CLASS,
           BIT_OPERATION,
+          UNARY_OPERATION,
           NOT_CALLABLE,
           CONSTRUCTOR_NOT_CALLABLE,
           FUNCTION_MASKS_VARIABLE,
@@ -714,12 +719,14 @@ public final class TypeCheck implements NodeTraversal.Callback, CompilerPass {
         break;
 
       case POS:
+        visitUnaryPlus(n);
+        break;
+
       case NEG:
         left = n.getFirstChild();
-        if (n.getToken() == Token.NEG) {
-          // We are more permissive with +, because it is used to coerce to number
-          validator.expectNumber(left, getJSType(left), "sign operator");
-        }
+        // We are more permissive with + than -, because it is used to coerce to number
+        // TODO(b/140132715): Update to handle bigint
+        validator.expectNumber(left, getJSType(left), "sign operator");
         ensureTyped(n, NUMBER_TYPE);
         break;
 
@@ -1066,6 +1073,18 @@ public final class TypeCheck implements NodeTraversal.Callback, CompilerPass {
     }
 
     checkJsdocInfoContainsObjectWithBadKey(n);
+  }
+
+  private void visitUnaryPlus(Node n) {
+    if (getJSType(n).isNoType()) {
+      report(
+          n,
+          UNARY_OPERATION,
+          NodeUtil.opToStr(n.getToken()),
+          getJSType(n.getFirstChild()).toString());
+    } else {
+      ensureTyped(n, NUMBER_TYPE);
+    }
   }
 
   private void checkSpread(Node spreadNode) {
@@ -2605,7 +2624,7 @@ public final class TypeCheck implements NodeTraversal.Callback, CompilerPass {
       }
 
       // Functions with explicit 'this' types must be called in a GETPROP or GETELEM.
-      if (functionType.isOrdinaryFunction() && !NodeUtil.isGet(child)) {
+      if (functionType.isOrdinaryFunction() && !NodeUtil.isNormalGet(child)) {
         JSType receiverType = functionType.getTypeOfThis();
         if (receiverType.isUnknownType()
             || receiverType.isAllType()

@@ -37,6 +37,7 @@ import com.google.javascript.jscomp.AbstractCommandLineRunner.FlagEntry;
 import com.google.javascript.jscomp.AbstractCommandLineRunner.JsSourceType;
 import com.google.javascript.jscomp.CompilerOptions.LanguageMode;
 import com.google.javascript.jscomp.SourceMap.LocationMapping;
+import com.google.javascript.jscomp.testing.JSChunkGraphBuilder;
 import com.google.javascript.rhino.Node;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -2536,14 +2537,15 @@ public final class CommandLineRunnerTest {
     args.add("--instrument_code=LINE");
 
     test(
-            "function foo(){ const answerToAll = 42; }",
-            "self.window||(self.window=self,self.window.top=self);var __jscov=window.top.__jscov||"
-                    + "(window.top.__jscov={fileNames:[],instrumentedLines:[],executedLines:[]}),"
-                    + "JSCompiler_lcov_data_input0=[];"
-                    + "__jscov.executedLines.push(JSCompiler_lcov_data_input0);"
-                    + "__jscov.instrumentedLines.push(\"01\");"
-                    + "__jscov.fileNames.push(\"input0\");"
-                    + "function foo(){JSCompiler_lcov_data_input0[0]=!0}");
+        "function foo(){ const answerToAll = 42; }",
+        lines(
+            "self.window||(self.window=self,self.window.top=self);var __jscov=window.top.__jscov||",
+            "(window.top.__jscov={fileNames:[],instrumentedLines:[],executedLines:[]}),",
+            "JSCompiler_lcov_data_input0=[];",
+            "__jscov.executedLines.push(JSCompiler_lcov_data_input0);",
+            "__jscov.instrumentedLines.push(\"01\");",
+            "__jscov.fileNames.push(\"input0\");",
+            "function foo(){JSCompiler_lcov_data_input0[0]=!0}"));
   }
 
   @Test
@@ -2551,11 +2553,12 @@ public final class CommandLineRunnerTest {
     args.add("--instrument_code=BRANCH");
 
     test(
-            "function foo(){ const answerToAll = 42; }",
-            "self.window||(self.window=self,self.window.top=self);"
-                    + "var __jscov=window.top.__jscov||(window.top.__jscov= "
-                    + "{fileNames:[],branchPresent:[],branchesInLine:[],branchesTaken:[]}); "
-                    + "function foo(){}");
+        "function foo(){ const answerToAll = 42; }",
+        lines(
+            "self.window||(self.window=self,self.window.top=self);",
+            "var __jscov=window.top.__jscov||(window.top.__jscov= ",
+            "{fileNames:[],branchPresent:[],branchesInLine:[],branchesTaken:[]}); ",
+            "function foo(){}"));
 
   }
 
@@ -2967,13 +2970,13 @@ public final class CommandLineRunnerTest {
       }
       inputsSupplier = Suppliers.ofInstance(inputs);
     } else if (useModules == ModulePattern.STAR) {
-      modulesSupplier = Suppliers.<List<JSModule>>ofInstance(
-          ImmutableList.copyOf(
-              CompilerTestCase.createModuleStar(original)));
+      modulesSupplier =
+          Suppliers.<List<JSModule>>ofInstance(
+              ImmutableList.copyOf(JSChunkGraphBuilder.forStar().addChunks(original).build()));
     } else if (useModules == ModulePattern.CHAIN) {
-      modulesSupplier = Suppliers.<List<JSModule>>ofInstance(
-          ImmutableList.copyOf(
-              CompilerTestCase.createModuleChain(original)));
+      modulesSupplier =
+          Suppliers.<List<JSModule>>ofInstance(
+              ImmutableList.copyOf(JSChunkGraphBuilder.forChain().addChunks(original).build()));
     } else {
       throw new IllegalArgumentException("Unknown module type: " + useModules);
     }

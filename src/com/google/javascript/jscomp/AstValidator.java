@@ -501,7 +501,7 @@ public final class AstValidator implements CompilerPass {
     // from working on detached nodes.
     // Calling code should correctly determine the context and call different methods as
     // appropriate.
-    if (NodeUtil.isExpressionResultUsed(nameNode) && !NodeUtil.isGet(nameNode.getParent())) {
+    if (NodeUtil.isExpressionResultUsed(nameNode) && !NodeUtil.isNormalGet(nameNode.getParent())) {
       // If the expression result is used, it must have a type.
       // However, we don't always add a type when the name is just part of a getProp or getElem.
       // That's OK, because we'll do type checking on the getProp/Elm itself, which has a type.
@@ -1082,7 +1082,7 @@ public final class AstValidator implements CompilerPass {
     Node superParent = superNode.getParent();
     Node methodNode = NodeUtil.getEnclosingNonArrowFunction(superParent);
 
-    if (NodeUtil.isGet(superParent) && superNode.isFirstChildOf(superParent)) {
+    if (NodeUtil.isNormalGet(superParent) && superNode.isFirstChildOf(superParent)) {
       // `super.prop` or `super['prop']`
       if (methodNode == null || !NodeUtil.isMethodDeclaration(methodNode)) {
         violation("super property references are only allowed in methods", superNode);
@@ -1572,7 +1572,7 @@ public final class AstValidator implements CompilerPass {
     validateFeature(Feature.OPTIONAL_CHAINING, node);
     checkArgument(node.isOptChainGetElem(), node);
     validateChildCount(node, 2);
-    validatePropertyReferenceTarget(node.getFirstChild());
+    validateExpression(node.getFirstChild());
     validateExpression(node.getLastChild());
     validateFirstNodeOfOptChain(node);
   }
@@ -1590,7 +1590,7 @@ public final class AstValidator implements CompilerPass {
     validateFeature(Feature.OPTIONAL_CHAINING, node);
     validateNodeType(Token.OPTCHAIN_GETPROP, node);
     validateChildCount(node);
-    validatePropertyReferenceTarget(node.getFirstChild());
+    validateExpression(node.getFirstChild());
     Node prop = node.getLastChild();
     validateNodeType(Token.STRING, prop);
     validateNonEmptyString(prop);

@@ -17,6 +17,7 @@
 package com.google.javascript.jscomp;
 
 import com.google.javascript.jscomp.CompilerOptions.LanguageMode;
+import com.google.javascript.jscomp.testing.JSChunkGraphBuilder;
 import com.google.javascript.jscomp.testing.TestExternsBuilder;
 import com.google.javascript.rhino.Node;
 import org.junit.Before;
@@ -750,14 +751,14 @@ public final class RemoveUnusedCodeTest extends CompilerTestCase {
 
   @Test
   public void testModule() {
-    test(createModules(
-        "var unreferenced=1; function x() { foo(); }" +
-            "function uncalled() { var x; return 2; }",
-        "var a,b; function foo() { this.foo(a); } x()"),
-        new String[]{
-            "function x(){foo()}",
-            "var a;function foo(){this.foo(a)}x()"
-        });
+    test(
+        JSChunkGraphBuilder.forUnordered()
+            .addChunk(
+                "var unreferenced=1; function x() { foo(); }"
+                    + "function uncalled() { var x; return 2; }")
+            .addChunk("var a,b; function foo() { this.foo(a); } x()")
+            .build(),
+        new String[] {"function x(){foo()}", "var a;function foo(){this.foo(a)}x()"});
   }
 
   @Test
@@ -3247,5 +3248,20 @@ public final class RemoveUnusedCodeTest extends CompilerTestCase {
             "  return c.usedProperty;",
             "}",
             "foo();"));
+  }
+
+  @Test
+  public void testRemovalFromRHSOfComma() {
+    // This is the repro for github issue 3612
+    test(
+        lines(
+            "function a() {",
+            "    var a = {}, b = null;",
+            "    a.a = 1,",
+            "    b.a = 2,", // Note the comma here.
+            "    Object.defineProperties(a, b);",
+            "}; ",
+            "alert(a);"),
+        lines("function a() {", "}; ", "alert(a);"));
   }
 }

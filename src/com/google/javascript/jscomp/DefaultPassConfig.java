@@ -572,7 +572,12 @@ public final class DefaultPassConfig extends PassConfig {
       passes.add(j2clUtilGetDefineRewriterPass);
     }
 
+    /*
     if (options.instrumentForCoverage) {
+      passes.add(instrumentForCodeCoverage);
+    }*/
+
+    if(options.instrumentForCoverageOption != null && options.instrumentForCoverageOption != InstrumentOption.NONE){
       passes.add(instrumentForCodeCoverage);
     }
 
@@ -2763,12 +2768,7 @@ public final class DefaultPassConfig extends PassConfig {
           .setInternalFactory(
               (compiler) -> {
                 // TODO(johnlenz): make global instrumentation an option
-                if (options.instrumentBranchCoverage) {
-                  return new CoverageInstrumentationPass(
-                      compiler, CoverageReach.CONDITIONAL, InstrumentOption.BRANCH_ONLY);
-                } else {
-                  return new CoverageInstrumentationPass(compiler, CoverageReach.CONDITIONAL);
-                }
+                return new CoverageInstrumentationPass(compiler, CoverageReach.CONDITIONAL, options.instrumentForCoverageOption);
               })
           .setFeatureSetForOptimizations()
           .build();

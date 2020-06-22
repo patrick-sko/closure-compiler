@@ -63,7 +63,8 @@ import com.google.javascript.rhino.IR;
 import com.google.javascript.rhino.InputId;
 import com.google.javascript.rhino.Node;
 import com.google.javascript.rhino.Token;
-import com.google.javascript.rhino.jstype.JSTypeRegistry;
+import com.google.javascript.rhino.jstype.JSTypeRegistry;;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -94,6 +95,7 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import javax.sound.midi.Instrument;
 
 /**
  * Compiler (and the other classes in this package) does the following:
@@ -892,18 +894,14 @@ public class Compiler extends AbstractCompiler implements ErrorHandler, SourceFi
         () -> {
           checkState(options.getInstrumentForCoverageOnly());
           checkState(!hasErrors());
-          instrumentForCoverageInternal(options.instrumentBranchCoverage);
+          instrumentForCoverageInternal(options.instrumentForCoverageOption);
           return null;
         });
   }
 
-  private void instrumentForCoverageInternal(boolean instrumentBranchCoverage) {
+  private void instrumentForCoverageInternal(InstrumentOption instrumentForCoverageOption) {
     Tracer tracer = newTracer("instrumentationPass");
-    InstrumentOption instrumentOption = InstrumentOption.LINE_ONLY;
-    if (instrumentBranchCoverage) {
-      instrumentOption = InstrumentOption.BRANCH_ONLY;
-    }
-    process(new CoverageInstrumentationPass(this, CoverageReach.ALL, instrumentOption));
+    process(new CoverageInstrumentationPass(this, CoverageReach.ALL, instrumentForCoverageOption));
     stopTracer(tracer, "instrumentationPass");
   }
 

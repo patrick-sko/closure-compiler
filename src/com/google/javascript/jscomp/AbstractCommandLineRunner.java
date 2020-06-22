@@ -1231,6 +1231,8 @@ public abstract class AbstractCommandLineRunner<A extends Compiler,
     }
 
 
+
+
     String saveAfterChecksFilename = config.getSaveAfterChecksFileName();
     String continueSavedCompilationFilename = config.getContinueSavedCompilationFileName();
     if (config.skipNormalOutputs) {

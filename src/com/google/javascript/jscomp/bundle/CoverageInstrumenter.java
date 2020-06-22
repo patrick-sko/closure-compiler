@@ -49,6 +49,7 @@ public class CoverageInstrumenter extends CompilerBasedTransformer {
       options.setSourceMapOutputPath("/dev/null");
       options.setVariableRenaming(VariableRenamingPolicy.OFF);
       options.instrumentForCoverage = true;
+      //options.setInstrumentForCoverageOption(2);
       options.setInstrumentForCoverageOnly(true);
     }
 

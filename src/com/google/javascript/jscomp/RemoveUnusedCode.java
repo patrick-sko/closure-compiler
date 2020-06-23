@@ -16,7 +16,6 @@
 
 package com.google.javascript.jscomp;
 
-import static com.google.common.base.MoreObjects.firstNonNull;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
@@ -34,7 +33,6 @@ import com.google.javascript.rhino.IR;
 import com.google.javascript.rhino.Node;
 import com.google.javascript.rhino.Token;
 import com.google.javascript.rhino.jstype.JSType;
-import com.google.javascript.rhino.jstype.JSTypeNative;
 import com.google.javascript.rhino.jstype.ObjectType;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -1307,6 +1305,10 @@ class RemoveUnusedCode implements CompilerPass {
     if (classNameNode.isName()) {
       // We may be able to remove the name node if nothing ends up referring to it.
       VarInfo varInfo = traverseNameNode(classNameNode, classScope);
+      // The class is non-local, because it is accessible by unknown code outside
+      // of the scope where InnerName is defined.
+      // e.g. `use(class InnerName {})`
+      varInfo.hasNonLocalOrNonLiteralValue = true;
       varInfo.addRemovable(new RemovableBuilder().buildNamedClassExpression(classNode));
     }
     // If we're traversing the class expression, we've already decided we cannot remove it.
@@ -2860,14 +2862,8 @@ class RemoveUnusedCode implements CompilerPass {
         // Var is global, since local variables have all been renamed by normalization).
         isRemovable = false;
       } else if (possiblyReferencingNode.isGetProp()) {
-        // Does the owner have type information? If so then this is a reference only if the owner
-        // could be the global 'this' type. Absent type information, just always assume it might be.
-        JSType ownerType = possiblyReferencingNode.getFirstChild().getJSType();
-        if (ownerType == null
-            || ownerType.canCastTo(
-                compiler.getTypeRegistry().getNativeType(JSTypeNative.GLOBAL_THIS))) {
-          isRemovable = false;
-        }
+        // Assume that the owner is possibly the global `this` and skip removal.
+        isRemovable = false;
       }
     }
   }
@@ -2895,19 +2891,7 @@ class RemoveUnusedCode implements CompilerPass {
       if (!possiblyReferencingNode.isGetProp()) {
         return;
       }
-      Node nodeOwner = possiblyReferencingNode.getFirstChild();
-      JSType nodeOwnerType = nodeOwner.getJSType();
-      if (polyfillOwnerType != null && nodeOwnerType != null) {
-        if (typesAreRelated(polyfillOwnerType, nodeOwnerType)) {
-          isRemovable = false;
-        }
-        return;
-      }
-      // no type information: check polyfillOwnerName instead.
-      if ((nodeOwner.isGetProp() && nodeOwner.getLastChild().getString().equals(polyfillOwnerName))
-          || (nodeOwner.isName() && nodeOwner.getString().equals(polyfillOwnerName))) {
-        isRemovable = false;
-      }
+      isRemovable = false;
     }
   }
 
@@ -2931,28 +2915,9 @@ class RemoveUnusedCode implements CompilerPass {
       if (!possiblyReferencingNode.isGetProp()) {
         return;
       }
-      JSType nodeOwnerType = possiblyReferencingNode.getFirstChild().getJSType();
-      if (polyfillOwnerType != null && nodeOwnerType != null) {
-        if (typesAreRelated(polyfillOwnerType, nodeOwnerType)) {
-          isRemovable = false;
-        }
-        return;
-      }
-      // Fallback for no type information: prototype properties are simply not removable.
+      // Prototype properties are simply not removable.
       isRemovable = false;
     }
-  }
-
-  private static boolean typesAreRelated(JSType expected, JSType actual) {
-    if (actual.isConstructor() && expected.isConstructor()) {
-      // All constructors can cast to one another, even if they're incompatible.
-      // If both types are constructors then compare the instance types instead.
-      actual = actual.toMaybeFunctionType().getInstanceType();
-      expected = expected.toMaybeFunctionType().getInstanceType();
-    }
-    actual = firstNonNull(actual.autobox(), actual);
-
-    return actual.canCastTo(expected);
   }
 
   /**

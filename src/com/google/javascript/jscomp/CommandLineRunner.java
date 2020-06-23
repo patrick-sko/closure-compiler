@@ -852,6 +852,45 @@ public class CommandLineRunner extends
     )
     private boolean helpMarkdown = false;
 
+    @Argument
+    private List<String> arguments = new ArrayList<>();
+    private final CmdLineParser parser;
+
+    Flags() {
+      parser = new CmdLineParser(this);
+    }
+
+    /**
+     * Parse the given args list.
+     */
+    private void parse(List<String> args) throws CmdLineException {
+      parser.parseArgument(args.toArray(new String[] {}));
+
+      compilationLevelParsed = CompilationLevel.fromString(Ascii.toUpperCase(compilationLevel));
+      if (compilationLevelParsed == null) {
+        throw new CmdLineException(
+            parser, "Bad value for --compilation_level: " + compilationLevel);
+      }
+    }
+
+    private static final ImmutableSet<String> gwtUnsupportedFlags =
+        ImmutableSet.of(
+            "conformance_configs",
+            "error_format",
+            "warnings_whitelist_file",
+            "warnings_allowlist_file",
+            "output_wrapper_file",
+            "output_manifest",
+            "output_chunk_dependencies",
+            "property_renaming_report",
+            "source_map_input",
+            "source_map_location_mapping",
+            "variable_renaming_report",
+            "charset",
+            "help",
+            "third_party",
+            "version");
+
     private static final Multimap<String, String> categories =
         new ImmutableMultimap.Builder<String, String>()
             .putAll(
@@ -933,64 +972,8 @@ public class CommandLineRunner extends
                     "help",
                     "third_party",
                     "use_types_for_optimization",
-                    "instrument_code",
                     "version"))
             .build();
-    @Option(
-        name = "--instrument_code",
-        usage = "Enable code instrumentation to perform code coverage analysis. Options are:\n"
-            + " 1. NONE (deault)\n"
-            + " 2. LINE - Instrument code by line.\n"
-            + " 3. BRANCH - Instrument code by branch.\n"
-    )
-    private String instrumentCode = "NONE";
-
-    private InstrumentOption instrumentCodeParsed = InstrumentOption.NONE;
-
-    @Argument
-    private final List<String> arguments = new ArrayList<>();
-    private final CmdLineParser parser;
-
-    Flags() {
-      parser = new CmdLineParser(this);
-    }
-
-    private static final ImmutableSet<String> gwtUnsupportedFlags =
-        ImmutableSet.of(
-            "conformance_configs",
-            "error_format",
-            "warnings_whitelist_file",
-            "warnings_allowlist_file",
-            "output_wrapper_file",
-            "output_manifest",
-            "output_chunk_dependencies",
-            "property_renaming_report",
-            "source_map_input",
-            "source_map_location_mapping",
-            "variable_renaming_report",
-            "charset",
-            "help",
-            "third_party",
-            "version");
-
-    /**
-     * Parse the given args list.
-     */
-    private void parse(List<String> args) throws CmdLineException {
-      parser.parseArgument(args.toArray(new String[] {}));
-
-      compilationLevelParsed = CompilationLevel.fromString(Ascii.toUpperCase(compilationLevel));
-      if (compilationLevelParsed == null) {
-        throw new CmdLineException(
-            parser, "Bad value for --compilation_level: " + compilationLevel);
-      }
-
-      instrumentCodeParsed = CompilerOptions.InstrumentOption.fromString(Ascii.toUpperCase(instrumentCode));
-      if (instrumentCodeParsed == null) {
-        throw new CmdLineException(
-            parser, "Bad value for --instrument_code: " + instrumentCode);
-      }
-    }
 
     private void printUsage(PrintStream ps) {
       OutputStreamWriter outputStream = new OutputStreamWriter(ps, UTF_8);
@@ -1928,8 +1911,6 @@ public class CommandLineRunner extends
       options.setVariableRenaming(VariableRenamingPolicy.OFF);
       options.setPropertyRenaming(PropertyRenamingPolicy.OFF);
     }
-
-    options.setInstrumentForCoverageOption(flags.instrumentCodeParsed);
 
     return options;
   }

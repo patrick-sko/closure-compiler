@@ -16,6 +16,7 @@
 package com.google.javascript.jscomp;
 
 import com.google.javascript.jscomp.CompilerOptions.LanguageMode;
+import com.google.javascript.jscomp.CompilerOptions.InstrumentOption;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -26,7 +27,7 @@ public final class CoverageInstrumentationPassTest {
 
   private CompilerOptions options(LanguageMode inMode, LanguageMode outMode, boolean coverageOnly) {
     CompilerOptions options = GoldenFileComparer.options();
-    options.setInstrumentForCoverage(true);
+    options.setInstrumentForCoverageOption(InstrumentOption.LINE_ONLY);
     options.setInstrumentForCoverageOnly(coverageOnly);
     options.setLanguageIn(inMode);
     options.setLanguageOut(outMode);
@@ -40,8 +41,7 @@ public final class CoverageInstrumentationPassTest {
 
   private CompilerOptions branchOptions(LanguageMode inMode) {
     CompilerOptions options = GoldenFileComparer.options();
-    options.setInstrumentForCoverage(true);
-    options.setInstrumentBranchCoverage(true);
+    options.setInstrumentForCoverageOption(InstrumentOption.BRANCH_ONLY);
     options.setLanguageIn(inMode);
     options.setLanguageOut(LanguageMode.ECMASCRIPT5);
     return options;
@@ -66,6 +66,7 @@ public final class CoverageInstrumentationPassTest {
   }
 
   // If the body of the arrow function is a block, it is instrumented.
+
   @Test
   public void testArrowFunction_block() throws Exception {
     compareArrowOneMode(LanguageMode.ECMASCRIPT_2015, "CoverageInstrumentationPassTest/ArrowBlock");

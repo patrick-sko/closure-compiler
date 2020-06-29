@@ -12,13 +12,13 @@ __jscov["branchPresent"].push("02");
 }
 __jscov["branchesInLine"].push(JSCompiler_lcov_branchesInLine);
 __jscov["fileNames"].push("CoverageInstrumentationPassTest/ForLoopBranchNoEndingBlock.jsdata");
-function addLoop(y,x){
-	for(let i = 0 ; i < x ; ++i){
-		JSCompiler_lcov_branch_data_CoverageInstrumentationPassTest_ForLoopBranchNoEndingBlock_jsdata[0] = true;
-		y += i;
-	}
-	{
-		JSCompiler_lcov_branch_data_CoverageInstrumentationPassTest_ForLoopBranchNoEndingBlock_jsdata[1] = true;
-	}
+function addLoop(y, x) {
+  for (var i = 0; i < x; ++i) {
+    JSCompiler_lcov_branch_data_CoverageInstrumentationPassTest_ForLoopBranchNoEndingBlock_jsdata[0] = true;
+    y += i;
+  }
+  {
+    JSCompiler_lcov_branch_data_CoverageInstrumentationPassTest_ForLoopBranchNoEndingBlock_jsdata[1] = true;
+  }
 }
 ;

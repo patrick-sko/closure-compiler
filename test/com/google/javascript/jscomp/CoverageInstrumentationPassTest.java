@@ -182,4 +182,15 @@ public final class CoverageInstrumentationPassTest {
         "CoverageInstrumentationPassTest/ForLoopBranchNoEndingBlock.jsdata");
   }
 
+  @Test
+  public void testForLoopConflictWithPolyfill() throws Exception {
+    CompilerOptions options = branchOptions(LanguageMode.STABLE);
+    options.setRewritePolyfills(true);
+    GoldenFileComparer.compileAndCompareByAmountOfIdenticalLines(
+        "CoverageInstrumentationPassTest/ForLoopBranchConflictWithPolyfillGolden.jsdata",
+        options,
+        "CoverageInstrumentationPassTest/ForLoopBranchConflictWithPolyfill.jsdata",
+        27);
+  }
+
 }

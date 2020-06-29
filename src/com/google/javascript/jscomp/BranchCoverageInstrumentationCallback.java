@@ -167,10 +167,6 @@ public class BranchCoverageInstrumentationCallback extends NodeTraversal.Abstrac
 
   /** Add branch instrumentation information for each block. */
   private void processBranchInfo(Node branchNode, FileInstrumentationData data, List<Node> blocks) {
-    if(branchNode.getSourceFileName() != data.getFileName()){
-      return;
-    }
-
     int lineNumber = branchNode.getLineno();
     data.setBranchPresent(lineNumber);
 

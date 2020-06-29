@@ -211,6 +211,7 @@ class FileInstrumentationData {
    * @param numberOfBranches the number of branches to add to the record.
    */
   void addBranches(int lineNumber, int numberOfBranches) {
+
     int lineIdx = lineNumber - 1;
     Integer currentValue = branchesInLine.get(Integer.valueOf(lineIdx));
     if (currentValue == null) {

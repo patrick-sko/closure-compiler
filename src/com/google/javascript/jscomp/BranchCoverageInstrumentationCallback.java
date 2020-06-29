@@ -49,6 +49,10 @@ public class BranchCoverageInstrumentationCallback extends NodeTraversal.Abstrac
   public void visit(NodeTraversal traversal, Node node, Node parent) {
     String fileName = traversal.getSourceName();
 
+    if(fileName != node.getSourceFileName()){
+      return;
+    }
+
     if (node.isScript()) {
       if (instrumentationData.get(fileName) != null) {
         Node toAddTo =
@@ -89,11 +93,15 @@ public class BranchCoverageInstrumentationCallback extends NodeTraversal.Abstrac
       for (DiGraph.DiGraphEdge<Node, ControlFlowGraph.Branch> outEdge : cfg.getOutEdges(node)) {
         if (outEdge.getValue() == ControlFlowGraph.Branch.ON_FALSE) {
           Node destination = outEdge.getDestination().getValue();
-          if (destination.isBlock()) {
+          if (destination != null && destination.isBlock()) {
             blocks.add(destination);
           } else {
             Node exitBlock = IR.block();
-            destination.getParent().addChildBefore(exitBlock, destination);
+            if (destination != null && destination.getParent().isBlock()) {
+              destination.getParent().addChildBefore(exitBlock, destination);
+            } else {
+              outEdge.getSource().getValue().getParent().addChildAfter(exitBlock,outEdge.getSource().getValue());
+            }
             blocks.add(exitBlock);
           }
         }
@@ -138,7 +146,7 @@ public class BranchCoverageInstrumentationCallback extends NodeTraversal.Abstrac
   }
 
   /**
-   * Create an assignment to the branch coverage data for the given index into the array.
+   * Create an assignment to the branch coverage data for the given index into the array
    *
    * @return the newly constructed assignment node.
    */
@@ -159,6 +167,10 @@ public class BranchCoverageInstrumentationCallback extends NodeTraversal.Abstrac
 
   /** Add branch instrumentation information for each block. */
   private void processBranchInfo(Node branchNode, FileInstrumentationData data, List<Node> blocks) {
+    if(branchNode.getSourceFileName() != data.getFileName()){
+      return;
+    }
+
     int lineNumber = branchNode.getLineno();
     data.setBranchPresent(lineNumber);
 
@@ -168,6 +180,7 @@ public class BranchCoverageInstrumentationCallback extends NodeTraversal.Abstrac
       data.putBranchNode(lineNumber, numBranches + 1, child);
       numBranches++;
     }
+
     data.addBranches(lineNumber, numBranches);
   }
 

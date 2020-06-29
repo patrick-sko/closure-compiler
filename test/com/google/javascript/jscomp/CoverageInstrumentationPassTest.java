@@ -165,4 +165,21 @@ public final class CoverageInstrumentationPassTest {
             LanguageMode.ECMASCRIPT_NEXT, LanguageMode.ECMASCRIPT_NEXT, /* coverageOnly= */ true),
         "CoverageInstrumentationPassTest/EsModule.jsdata");
   }
+
+  @Test
+  public void testNestedForLoop() throws Exception {
+    GoldenFileComparer.compileAndCompare(
+        "CoverageInstrumentationPassTest/NestedForLoopBranch.jsdata",
+        branchOptions(LanguageMode.STABLE),
+        "CoverageInstrumentationPassTest/NestedForLoopBranchGolden.jsdata");
+  }
+
+  @Test
+  public void testForLoopNoEndingBlock() throws Exception {
+    GoldenFileComparer.compileAndCompare(
+        "CoverageInstrumentationPassTest/ForLoopBranchNoEndingBlock.jsdata",
+        branchOptions(LanguageMode.STABLE),
+        "CoverageInstrumentationPassTest/ForLoopBranchNoEndingBlockGolden.jsdata");
+  }
+
 }

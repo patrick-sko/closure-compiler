@@ -21,3 +21,4 @@ function addLoop(y,x){
 		JSCompiler_lcov_branch_data_CoverageInstrumentationPassTest_ForLoopBranchNoEndingBlock_jsdata[1] = true;
 	}
 }
+;

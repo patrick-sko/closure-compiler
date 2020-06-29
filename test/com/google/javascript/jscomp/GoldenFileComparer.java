@@ -105,8 +105,12 @@ public class GoldenFileComparer {
     compare(compiledSource, referenceSource);
   }
 
-  public static void compileAndCompareByAmountOfIdenticalLines(
-      String goldenFileName, CompilerOptions options, String sourceFileName, int numberOfIdenticalLines) throws Exception {
+  /**
+   * Compile sourceFileName with given CompilerOptions and check that all lines of code from
+   * goldenFileName are present in compiled sourceFile.
+   */
+  public static void compileAndCompareSubsetOfActualToExpected(
+      String goldenFileName, CompilerOptions options, String sourceFileName) throws Exception {
     List<SourceFile> sourceFiles = ImmutableList.of(readSource(sourceFileName));
     List<SourceFile> externsFiles = ImmutableList.of();
     String compiledSource = compile(externsFiles, sourceFiles, options);
@@ -115,15 +119,17 @@ public class GoldenFileComparer {
     String[] compiledLines = compiledSource.split("\n");
     String[] goldenLines = referenceSource.split("\n");
 
+    int expectedNumberOfIdenticalLines = goldenLines.length;
+
     int identicalLinesBetweenFiles = 0;
-    // Loop through each line to make it convenient to pin-point the faulty one
+
     for (int i = 0; i < compiledLines.length; i++) {
-      if(goldenLines[identicalLinesBetweenFiles].equals(compiledLines[i])){
+      if (goldenLines[identicalLinesBetweenFiles].equals(compiledLines[i])) {
         identicalLinesBetweenFiles++;
       }
     }
 
-    assertThat(identicalLinesBetweenFiles).isEqualTo(numberOfIdenticalLines);
+    assertThat(identicalLinesBetweenFiles).isEqualTo(expectedNumberOfIdenticalLines);
   }
 
   /**

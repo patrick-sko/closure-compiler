@@ -186,11 +186,10 @@ public final class CoverageInstrumentationPassTest {
   public void testForLoopConflictWithPolyfill() throws Exception {
     CompilerOptions options = branchOptions(LanguageMode.STABLE);
     options.setRewritePolyfills(true);
-    GoldenFileComparer.compileAndCompareByAmountOfIdenticalLines(
+    GoldenFileComparer.compileAndCompareSubsetOfActualToExpected(
         "CoverageInstrumentationPassTest/ForLoopBranchConflictWithPolyfillGolden.jsdata",
         options,
-        "CoverageInstrumentationPassTest/ForLoopBranchConflictWithPolyfill.jsdata",
-        27);
+        "CoverageInstrumentationPassTest/ForLoopBranchConflictWithPolyfill.jsdata");
   }
 
 }

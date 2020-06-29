@@ -49,7 +49,8 @@ public class BranchCoverageInstrumentationCallback extends NodeTraversal.Abstrac
   public void visit(NodeTraversal traversal, Node node, Node parent) {
     String fileName = traversal.getSourceName();
 
-    if(fileName != node.getSourceFileName()){
+    // If origin of node is not from sourceFile, do not instrument
+    if (fileName != node.getSourceFileName()) {
       return;
     }
 
@@ -100,7 +101,8 @@ public class BranchCoverageInstrumentationCallback extends NodeTraversal.Abstrac
             if (destination != null && destination.getParent().isBlock()) {
               destination.getParent().addChildBefore(exitBlock, destination);
             } else {
-              outEdge.getSource().getValue().getParent().addChildAfter(exitBlock,outEdge.getSource().getValue());
+              outEdge.getSource().getValue().getParent()
+                  .addChildAfter(exitBlock, outEdge.getSource().getValue());
             }
             blocks.add(exitBlock);
           }
@@ -146,7 +148,7 @@ public class BranchCoverageInstrumentationCallback extends NodeTraversal.Abstrac
   }
 
   /**
-   * Create an assignment to the branch coverage data for the given index into the array
+   * Create an assignment to the branch coverage data for the given index into the array.
    *
    * @return the newly constructed assignment node.
    */

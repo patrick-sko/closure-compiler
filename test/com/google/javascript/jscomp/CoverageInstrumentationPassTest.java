@@ -169,17 +169,17 @@ public final class CoverageInstrumentationPassTest {
   @Test
   public void testNestedForLoop() throws Exception {
     GoldenFileComparer.compileAndCompare(
-        "CoverageInstrumentationPassTest/NestedForLoopBranch.jsdata",
+        "CoverageInstrumentationPassTest/NestedForLoopBranchGolden.jsdata",
         branchOptions(LanguageMode.STABLE),
-        "CoverageInstrumentationPassTest/NestedForLoopBranchGolden.jsdata");
+        "CoverageInstrumentationPassTest/NestedForLoopBranch.jsdata");
   }
 
   @Test
   public void testForLoopNoEndingBlock() throws Exception {
     GoldenFileComparer.compileAndCompare(
-        "CoverageInstrumentationPassTest/ForLoopBranchNoEndingBlock.jsdata",
+        "CoverageInstrumentationPassTest/ForLoopBranchNoEndingBlockGolden.jsdata",
         branchOptions(LanguageMode.STABLE),
-        "CoverageInstrumentationPassTest/ForLoopBranchNoEndingBlockGolden.jsdata");
+        "CoverageInstrumentationPassTest/ForLoopBranchNoEndingBlock.jsdata");
   }
 
 }

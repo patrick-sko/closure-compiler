@@ -180,7 +180,6 @@ public class BranchCoverageInstrumentationCallback extends NodeTraversal.Abstrac
       data.putBranchNode(lineNumber, numBranches + 1, child);
       numBranches++;
     }
-
     data.addBranches(lineNumber, numBranches);
   }
 

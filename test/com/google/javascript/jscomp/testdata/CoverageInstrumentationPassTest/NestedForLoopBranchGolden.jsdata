@@ -12,20 +12,20 @@ __jscov["branchPresent"].push("06");
   JSCompiler_lcov_branchesInLine[1] = 2;
 }
 __jscov["branchesInLine"].push(JSCompiler_lcov_branchesInLine);
-__jscov["fileNames"].push("CoverageInstrumentationPassTest/DoubleForLoopBranch.jsdata");
-function doubleLoop(y,x){
-	for(var i = 0 ; i < x ; ++i){
-		JSCompiler_lcov_branch_data_CoverageInstrumentationPassTest_NestedForLoopBranch_jsdata[0] = true;
-		for(var j = 0 ; j < i ; ++j){
-			JSCompiler_lcov_branch_data_CoverageInstrumentationPassTest_NestedForLoopBranch_jsdata[2] = true;
-			y += j;
-		}
-		{
-			JSCompiler_lcov_branch_data_CoverageInstrumentationPassTest_NestedForLoopBranch_jsdata[3] = true;
-		}
-	}
-	{
-		JSCompiler_lcov_branch_data_CoverageInstrumentationPassTest_NestedForLoopBranch_jsdata[1] = true;
-	}
+__jscov["fileNames"].push("CoverageInstrumentationPassTest/NestedForLoopBranch.jsdata");
+function doubleLoop(y, x) {
+  for (var i = 0; i < x; ++i) {
+    JSCompiler_lcov_branch_data_CoverageInstrumentationPassTest_NestedForLoopBranch_jsdata[0] = true;
+    for (var j = 0; j < i; ++j) {
+      JSCompiler_lcov_branch_data_CoverageInstrumentationPassTest_NestedForLoopBranch_jsdata[2] = true;
+      y += j;
+    }
+    {
+      JSCompiler_lcov_branch_data_CoverageInstrumentationPassTest_NestedForLoopBranch_jsdata[3] = true;
+    }
+  }
+  {
+    JSCompiler_lcov_branch_data_CoverageInstrumentationPassTest_NestedForLoopBranch_jsdata[1] = true;
+  }
 }
 ;

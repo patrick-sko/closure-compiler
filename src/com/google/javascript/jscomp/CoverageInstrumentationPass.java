@@ -55,6 +55,21 @@ class CoverageInstrumentationPass implements CompilerPass {
     this(compiler, reach, InstrumentOption.LINE_ONLY);
   }
 
+  /*
+  private void addRequriesToTop(Node script) {
+   // script.addChildToFront(createConditionalObjectDecl(JS_INSTRUMENTATION_OBJECT_NAME, script));
+
+    Node requiresNode =
+
+    // Make subsequent usages of "window" and "window.top" work in a Web Worker context.
+    script.addChildToFront(
+        compiler
+            .parseSyntheticCode("if (!self.window) { self.window = self; self.window.top = self; }")
+            .removeFirstChild()
+            .useSourceInfoIfMissingFromForTree(script));
+  }
+  */
+
   /**
    * Creates the js code to be added to source. This code declares and initializes the variables
    * required for collection of coverage data.
@@ -78,7 +93,14 @@ class CoverageInstrumentationPass implements CompilerPass {
             compiler,
             rootNode,
             new BranchCoverageInstrumentationCallback(compiler, instrumentationData));
-      } else {
+      } else if(instrumentOption == InstrumentOption.ADVANCED) {
+        NodeTraversal.traverse(
+            compiler,
+            rootNode,
+            new AdvancedCoverageInstrumentationCallback(compiler, instrumentationData));
+        return;
+      }
+      else {
         NodeTraversal.traverse(
             compiler, rootNode, new CoverageInstrumentationCallback(instrumentationData, reach));
       }

@@ -1,38 +1,37 @@
 package com.google.javascript.jscomp;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.google.common.annotations.GwtIncompatible;
-import com.google.javascript.jscomp.graph.DiGraph;
+import com.google.debugging.sourcemap.Base64VLQ;
 import com.google.javascript.rhino.IR;
 import com.google.javascript.rhino.Node;
+import java.io.IOException;
+import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 
-/** Instrument branch coverage for javascript. */
-@GwtIncompatible("FileInstrumentationData")
-public class AdvancedCoverageInstrumentationCallback extends NodeTraversal.AbstractPostOrderCallback {
+/**
+ * Instrument advanced coverage for javascript.
+ */
+@GwtIncompatible("AdvancedFileInstrumentationData")
+public class AdvancedCoverageInstrumentationCallback extends
+    NodeTraversal.AbstractPostOrderCallback {
+
+  private static final String INSTRUMENT_CODE_FUNCTION_NAME = "instrumentCode";
+  private static final String INSTRUMENT_CODE_FILE_NAME = "InstrumentCode.js";
   private final AbstractCompiler compiler;
-  private final Map<String, FileInstrumentationData> instrumentationData;
-
-  private static final String BRANCH_ARRAY_NAME_PREFIX = "instrumentCode";
-
-  /** Returns a string that can be used for the branch coverage data. */
-  private static String createArrayName(NodeTraversal traversal) {
-    return BRANCH_ARRAY_NAME_PREFIX;
-  }
-
-  private static String createFunctionName(NodeTraversal traversal) {
-    return BRANCH_ARRAY_NAME_PREFIX;
-  }
-
+  private final ParameterMapping parameterMapping;
+  private final Map<String, AdvancedFileInstrumentationData> instrumentationData;
+  private String functionName = "Anonymous";
   public AdvancedCoverageInstrumentationCallback(
-      AbstractCompiler compiler, Map<String, FileInstrumentationData> instrumentationData) {
+      AbstractCompiler compiler, Map<String, AdvancedFileInstrumentationData> instrumentationData) {
     this.compiler = compiler;
     this.instrumentationData = instrumentationData;
+    this.parameterMapping = new ParameterMapping();
   }
 
   @Override
@@ -47,153 +46,168 @@ public class AdvancedCoverageInstrumentationCallback extends NodeTraversal.Abstr
       return;
     }
 
-    if (Objects.equals(node.getSourceFileName(), "InstrumentCode.js")){
+    String sourceFileName = node.getSourceFileName();
+    // If Source File is base.js or INSTRUMENT_CODE_FILE_NAME, do not instrument as the instrument
+    // function has not yet been defined when base.js will be executing and the implementation file
+    // can not call the Code instrumentation function on itself
+    if (sourceFileName.endsWith("base.js") || sourceFileName.endsWith(INSTRUMENT_CODE_FILE_NAME)) {
       return;
     }
 
     if (node.isScript()) {
       if (instrumentationData.get(fileName) != null) {
-        Node toAddTo =
-            node.hasChildren() && node.getFirstChild().isModuleBody() ? node.getFirstChild() : node;
-        // Add instrumentation code
-       // toAddTo.addChildrenToFront(newHeaderNode(traversal, toAddTo).removeChildren());
         compiler.reportChangeToEnclosingScope(node);
-        instrumentBranchCoverage(traversal, instrumentationData.get(fileName));
+        instrumentCode(traversal, instrumentationData.get(fileName));
       }
     }
 
-    if (node.isIf()) {
-      ControlFlowGraph<Node> cfg = traversal.getControlFlowGraph();
-      boolean hasDefaultBlock = false;
-      for (DiGraph.DiGraphEdge<Node, ControlFlowGraph.Branch> outEdge : cfg.getOutEdges(node)) {
-        if (outEdge.getValue() == ControlFlowGraph.Branch.ON_FALSE) {
-          Node destination = outEdge.getDestination().getValue();
-          if (destination != null
-              && destination.isBlock()
-              && destination.getParent() != null
-              && destination.getParent().isIf()) {
-            hasDefaultBlock = true;
-          }
-          break;
-        }
-      }
-      if (!hasDefaultBlock) {
-        addDefaultBlock(node);
-      }
+    if (node.isFunction()) {
+
+      functionName = NodeUtil.getBestLValueName(NodeUtil.getBestLValue(node));
+
       if (!instrumentationData.containsKey(fileName)) {
-        instrumentationData.put(
-            fileName, new FileInstrumentationData(fileName, createArrayName(traversal)));
+        instrumentationData.put(fileName, new AdvancedFileInstrumentationData(fileName));
       }
-      processBranchInfo(node, instrumentationData.get(fileName), getChildrenBlocks(node));
-    } else if (NodeUtil.isLoopStructure(node)) {
-      List<Node> blocks = getChildrenBlocks(node);
-      ControlFlowGraph<Node> cfg = traversal.getControlFlowGraph();
-      for (DiGraph.DiGraphEdge<Node, ControlFlowGraph.Branch> outEdge : cfg.getOutEdges(node)) {
-        if (outEdge.getValue() == ControlFlowGraph.Branch.ON_FALSE) {
-          Node destination = outEdge.getDestination().getValue();
-          if (destination != null && destination.isBlock()) {
-            blocks.add(destination);
-          } else {
-            Node exitBlock = IR.block();
-            if (destination != null && destination.getParent().isBlock()) {
-              // When the destination of an outEdge of the CFG is not null and the source node's
-              // parent is a block. If parent is not a block it may result in an illegal state
-              // exception
-              destination.getParent().addChildBefore(exitBlock, destination);
-            } else {
-              // When the destination of an outEdge of the CFG is null then we need to add an empty
-              // block directly after the loop structure that we can later instrument
-              outEdge
-                  .getSource()
-                  .getValue()
-                  .getParent()
-                  .addChildAfter(exitBlock, outEdge.getSource().getValue());
-            }
-            blocks.add(exitBlock);
-          }
-        }
-      }
-      if (!instrumentationData.containsKey(fileName)) {
-        instrumentationData.put(
-            fileName, new FileInstrumentationData(fileName, createArrayName(traversal)));
-      }
-      processBranchInfo(node, instrumentationData.get(fileName), blocks);
-    }
-  }
+      addBlockNode(instrumentationData.get(fileName), Arrays.asList(node.getLastChild()),
+          functionName);
 
-  private List<Node> getChildrenBlocks(Node node) {
-    List<Node> blocks = new ArrayList<>();
-    for (Node child : node.children()) {
-      if (child.isBlock()) {
-        blocks.add(child);
-      }
-    }
-    return blocks;
-  }
-
-  /**
-   * Add instrumentation code for branch coverage. For each block that correspond to a branch,
-   * insert an assignment of the branch coverage data to the front of the block.
-   */
-  private void instrumentBranchCoverage(NodeTraversal traversal, FileInstrumentationData data) {
-    int maxLine = data.maxBranchPresentLine();
-    //int branchCoverageOffset = 0;
-    for (int lineIdx = 1; lineIdx <= maxLine; ++lineIdx) {
-      Integer numBranches = data.getNumBranches(lineIdx);
-      if (numBranches != null) {
-        for (int branchIdx = 1; branchIdx <= numBranches; ++branchIdx) {
-          Node block = data.getBranchNode(lineIdx, branchIdx);
-          block.addChildToFront(
-              newBranchInstrumentationNode(traversal, block, lineIdx));
-          compiler.reportChangeToEnclosingScope(block);
-        }
-      //  branchCoverageOffset += numBranches;
-      }
     }
   }
 
   /**
-   * Create an assignment to the branch coverage data for the given index into the array.
+   * Iterate over all collected block nodes within a Script node and add a new child to the front of
+   * each block node which is the instrumentation Node
    *
-   * @return the newly constructed assignment node.
+   * @param traversal Tne node traversal context which maintains information such as fileName being
+   *                  traversed
+   * @param data      Data structure that maintains an organized list of block nodes that need to be
+   *                  instrumented
    */
-  private Node newBranchInstrumentationNode(NodeTraversal traversal, Node node, int lineIndex) {
+  private void instrumentCode(NodeTraversal traversal, AdvancedFileInstrumentationData data) {
+    Map<String, List<Node>> functionScopedNodes = data.getFunctionScopeNodes();
+    for (String key : functionScopedNodes.keySet()) {
+      for (Node block : functionScopedNodes.get(key)) {
+        block.addChildToFront(
+            newInstrumentationNode(traversal, block, key));
+        compiler.reportChangeToEnclosingScope(block);
+      }
+    }
+  }
 
-    String arrayName = createArrayName(traversal);
+  /**
+   * Create a function call to the Instrument Code function with properly encoded parameters.
+   *
+   * @param traversal The context of the current traversal.
+   * @param node      The block node to be instrumented.
+   * @param fnName    The function name that the node exists within.
+   * @return The newly constructed function call node.
+   */
+  private Node newInstrumentationNode(NodeTraversal traversal, Node node, String fnName) {
 
-    String functionName = createFunctionName(traversal);
+    String type = "Type.FUNCTION";
+    String combinedParam = traversal.getSourceName() + " " + fnName + " " + type;
 
-    Node prop = IR.getprop(IR.name("InstrumentCode"), IR.string(functionName));
-    Node functionCall = IR.call(prop, IR.string(traversal.getSourceName()), IR.string("foo"),IR.string("InstrumentCode.Type.BRANCH"), IR.number( lineIndex));
+    BigInteger uniqueIdentifier = parameterMapping.getUniqueIdentifier(combinedParam);
+    BigInteger maxInteger = new BigInteger(Integer.toString(Integer.MAX_VALUE));
+
+    if (uniqueIdentifier.compareTo(maxInteger) > 0) {
+      throw new ArithmeticException(
+          "Unique Identifier exceeds value of Integer.MAX_VALUE, could not encode with Base 64 VLQ");
+    }
+
+    StringBuilder sb = new StringBuilder();
+
+    try {
+      Base64VLQ.encode(sb, uniqueIdentifier.intValue());
+    } catch (IOException e) {
+      // If encoding in Base64 VLQ fails, we will use the original identifier as it will still
+      // maintain obfuscation and partial optimization
+      sb.append(uniqueIdentifier.intValue());
+    }
+
+    parameterMapping.addParamMapping(sb.toString(), combinedParam);
+
+    Node inner_prop = IR
+        .getprop(IR.name("module$exports$instrument$code"), IR.string("instrumentCodeInstance"));
+    Node outer_prop = IR.getprop(inner_prop, IR.string(INSTRUMENT_CODE_FUNCTION_NAME));
+    Node functionCall = IR.call(outer_prop, IR.string(sb.toString()), IR.number(node.getLineno()));
     Node exprNode = IR.exprResult(functionCall);
 
-    // Note line as instrumented
-    String fileName = traversal.getSourceName();
-    if (!instrumentationData.containsKey(fileName)) {
-      instrumentationData.put(fileName, new FileInstrumentationData(fileName, arrayName));
-    }
     return exprNode.useSourceInfoIfMissingFromForTree(node);
   }
 
-  /** Add branch instrumentation information for each block. */
-  private void processBranchInfo(Node branchNode, FileInstrumentationData data, List<Node> blocks) {
-    int lineNumber = branchNode.getLineno();
-    data.setBranchPresent(lineNumber);
-
-    // Instrument for each block
-    int numBranches = 0;
-    for (Node child : blocks) {
-      data.putBranchNode(lineNumber, numBranches + 1, child);
-      numBranches++;
+  private void addBlockNode(AdvancedFileInstrumentationData instrumentationData, List<Node> blocks,
+      String functionScope) {
+    for (Node block : blocks) {
+      instrumentationData.addNode(functionScope, block);
     }
-    data.addBranches(lineNumber, numBranches);
   }
 
-  /** Add a default block for conditional statements, e.g., If, Switch. */
-  private Node addDefaultBlock(Node node) {
-    Node defaultBlock = IR.block();
-    node.addChildToBack(defaultBlock);
-    return defaultBlock.useSourceInfoIfMissingFromForTree(node);
+  /**
+   * A class the maintains a mapping of unique identifiers to parameter values. It also generates
+   * unique identifiers by creating a counter starting form 0 and increments this value when
+   * assigning a new unique identifier.
+   */
+  private static final class ParameterMapping {
+
+    private BigInteger nextUniqueIdentifier;
+    private final List<String> uniqueIdentifier;
+    private final List<String> paramValue;
+    private String previousMapping;
+
+    ParameterMapping() {
+      nextUniqueIdentifier = new BigInteger("0");
+      uniqueIdentifier = new ArrayList<>();
+      paramValue = new ArrayList<>();
+      previousMapping = "";
+    }
+
+    public BigInteger getUniqueIdentifier(String param) {
+      if (previousMapping.equals(param)) {
+        return nextUniqueIdentifier;
+      }
+      previousMapping = param;
+      nextUniqueIdentifier = nextUniqueIdentifier.add(new BigInteger("1"));
+      return nextUniqueIdentifier;
+    }
+
+    public void addParamMapping(String identifier, String param) {
+      if (previousMapping.equals(param)) {
+        return;
+      }
+      previousMapping = param;
+      uniqueIdentifier.add(identifier);
+      paramValue.add(param);
+    }
+
+  }
+
+  /**
+   * A class that maintains a list of blocks that are to be instrumented and organises these block
+   * nodes by the function name and what file they are enclosed within.
+   */
+  private static final class AdvancedFileInstrumentationData {
+
+    private final String fileName;
+    private final Map<String, List<Node>> functionScopedNodes;
+
+    AdvancedFileInstrumentationData(String fileName) {
+      this.fileName = fileName;
+      this.functionScopedNodes = new HashMap<>();
+    }
+
+    void addNode(String functionScope, Node node) {
+      if (!functionScopedNodes.containsKey(functionScope)) {
+        functionScopedNodes.put(functionScope, new ArrayList<>(Arrays.asList(node)));
+      } else {
+        functionScopedNodes.get(functionScope).add(node);
+      }
+    }
+
+    Map<String, List<Node>> getFunctionScopeNodes() {
+      return functionScopedNodes;
+    }
+
   }
 
 }

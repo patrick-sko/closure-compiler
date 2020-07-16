@@ -22,6 +22,7 @@ import com.google.common.annotations.GwtIncompatible;
 import com.google.javascript.jscomp.CompilerOptions.InstrumentOption;
 import com.google.javascript.rhino.IR;
 import com.google.javascript.rhino.Node;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -55,20 +56,7 @@ class CoverageInstrumentationPass implements CompilerPass {
     this(compiler, reach, InstrumentOption.LINE_ONLY);
   }
 
-  /*
-  private void addRequriesToTop(Node script) {
-   // script.addChildToFront(createConditionalObjectDecl(JS_INSTRUMENTATION_OBJECT_NAME, script));
 
-    Node requiresNode =
-
-    // Make subsequent usages of "window" and "window.top" work in a Web Worker context.
-    script.addChildToFront(
-        compiler
-            .parseSyntheticCode("if (!self.window) { self.window = self; self.window.top = self; }")
-            .removeFirstChild()
-            .useSourceInfoIfMissingFromForTree(script));
-  }
-  */
 
   /**
    * Creates the js code to be added to source. This code declares and initializes the variables
@@ -97,7 +85,8 @@ class CoverageInstrumentationPass implements CompilerPass {
         NodeTraversal.traverse(
             compiler,
             rootNode,
-            new AdvancedCoverageInstrumentationCallback(compiler, instrumentationData));
+            new AdvancedCoverageInstrumentationCallback(compiler, new HashMap<>()));
+
         return;
       }
       else {

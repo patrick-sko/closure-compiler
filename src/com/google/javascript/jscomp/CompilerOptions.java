@@ -859,8 +859,8 @@ public class CompilerOptions implements Serializable {
   /** Map used in the renaming of CSS class names. */
   public CssRenamingMap cssRenamingMap;
 
-  /** Whitelist used in the renaming of CSS class names. */
-  Set<String> cssRenamingWhitelist;
+  /** Skiplist used in the renaming of CSS class names. */
+  Set<String> cssRenamingSkiplist;
 
   /** Replace id generators */
   boolean replaceIdGenerators = true;  // true by default for legacy reasons.
@@ -1433,7 +1433,7 @@ public class CompilerOptions implements Serializable {
     generateExports = false;
     exportLocalPropertyDefinitions = false;
     cssRenamingMap = null;
-    cssRenamingWhitelist = null;
+    cssRenamingSkiplist = null;
     idGenerators = ImmutableMap.of();
     replaceStringsFunctionDescriptions = ImmutableList.of();
     replaceStringsPlaceholderToken = "";
@@ -2127,35 +2127,6 @@ public class CompilerOptions implements Serializable {
          ImmutableMap.copyOf(propertyInvalidationErrors);
   }
 
-  /**
-   * Configures the compiler for use as an IDE backend.  In this mode:
-   * <ul>
-   *  <li>No optimization passes will run.</li>
-   *  <li>The last time custom passes are invoked is
-   *      {@link CustomPassExecutionTime#BEFORE_OPTIMIZATIONS}</li>
-   *  <li>The compiler will always try to process all inputs fully, even
-   *      if it encounters errors.</li>
-   *  <li>The compiler may record more information than is strictly
-   *      needed for codegen.</li>
-   * </ul>
-   *
-   * @deprecated Some "IDE" clients will need some of these options but not
-   * others. Consider calling setChecksOnly, setAllowRecompilation, etc,
-   * explicitly, instead of calling this method which does a variety of
-   * different things.
-   */
-  @Deprecated
-  public void setIdeMode(boolean ideMode) {
-    setChecksOnly(ideMode);
-    setContinueAfterErrors(ideMode);
-    setAllowHotswapReplaceScript(ideMode);
-    setPreserveDetailedSourceInfo(ideMode);
-    setParseJsDocDocumentation(
-        ideMode
-            ? Config.JsDocParsing.INCLUDE_DESCRIPTIONS_NO_WHITESPACE
-            : Config.JsDocParsing.TYPES_ONLY);
-  }
-
   public void setAllowHotswapReplaceScript(boolean allowRecompilation) {
     this.allowHotswapReplaceScript = allowRecompilation;
   }
@@ -2591,8 +2562,13 @@ public class CompilerOptions implements Serializable {
     this.cssRenamingMap = cssRenamingMap;
   }
 
+  @Deprecated
   public void setCssRenamingWhitelist(Set<String> skiplist) {
-    this.cssRenamingWhitelist = skiplist;
+    setCssRenamingSkiplist(skiplist);
+  }
+
+  public void setCssRenamingSkiplist(Set<String> skiplist) {
+    this.cssRenamingSkiplist = skiplist;
   }
 
   public void setReplaceStringsFunctionDescriptions(
@@ -3003,7 +2979,7 @@ public class CompilerOptions implements Serializable {
             .add("crossChunkCodeMotionNoStubMethods", crossChunkCodeMotionNoStubMethods)
             .add("crossChunkMethodMotion", crossChunkMethodMotion)
             .add("cssRenamingMap", cssRenamingMap)
-            .add("cssRenamingWhitelist", cssRenamingWhitelist)
+            .add("cssRenamingSkiplist", cssRenamingSkiplist)
             .add("customPasses", customPasses)
             .add("dartPass", dartPass)
             .add("deadAssignmentElimination", deadAssignmentElimination)

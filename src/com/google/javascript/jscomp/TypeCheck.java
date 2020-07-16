@@ -803,14 +803,16 @@ public final class TypeCheck implements NodeTraversal.Callback, CompilerPass {
         rightType = getJSType(rightSide);
         if (rightType.isUnknownType()) {
           // validate comparable left
-          validator.expectStringOrNumber(leftSide, leftType, "left side of comparison");
+          validator.expectUnknownOrComparable(leftSide, leftType, "left side of comparison");
         } else if (leftType.isUnknownType()) {
           // validate comparable right
-          validator.expectStringOrNumber(rightSide, rightType, "right side of comparison");
-        } else if (rightType.isNumber()) {
-          validator.expectNumber(leftSide, leftType, "left side of numeric comparison");
-        } else if (leftType.isNumber()) {
-          validator.expectNumber(rightSide, rightType, "right side of numeric comparison");
+          validator.expectUnknownOrComparable(rightSide, rightType, "right side of comparison");
+        } else if (rightType.isBigIntOrNumber()) {
+          // validate left operand for numeric comparison
+          validator.expectBigIntOrNumber(leftSide, leftType, "left side of numeric comparison");
+        } else if (leftType.isBigIntOrNumber()) {
+          // validate right operand for numeric comparison
+          validator.expectBigIntOrNumber(rightSide, rightType, "right side of numeric comparison");
         } else {
           String errorMsg = "expected matching types in comparison";
           this.validator.expectMatchingTypesStrict(n, leftType, rightType, errorMsg);

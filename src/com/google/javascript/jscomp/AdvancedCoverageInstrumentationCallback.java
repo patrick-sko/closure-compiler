@@ -145,22 +145,15 @@ public class AdvancedCoverageInstrumentationCallback extends
   }
 
   /**
-   * Only used for testing purposes.
-   */
-  public void setUniqueIdentifier(BigInteger val){
-    parameterMapping.nextUniqueIdentifier = val;
-  }
-
-  /**
    * A class the maintains a mapping of unique identifiers to parameter values. It also generates
    * unique identifiers by creating a counter starting form 0 and increments this value when
    * assigning a new unique identifier.
    */
   private static final class ParameterMapping {
 
-    private BigInteger nextUniqueIdentifier;
     private final List<String> uniqueIdentifier;
     private final List<String> paramValue;
+    private BigInteger nextUniqueIdentifier;
 
     ParameterMapping() {
       nextUniqueIdentifier = new BigInteger("0");

@@ -56,8 +56,6 @@ class CoverageInstrumentationPass implements CompilerPass {
     this(compiler, reach, InstrumentOption.LINE_ONLY);
   }
 
-
-
   /**
    * Creates the js code to be added to source. This code declares and initializes the variables
    * required for collection of coverage data.
@@ -81,15 +79,14 @@ class CoverageInstrumentationPass implements CompilerPass {
             compiler,
             rootNode,
             new BranchCoverageInstrumentationCallback(compiler, instrumentationData));
-      } else if(instrumentOption == InstrumentOption.ADVANCED) {
+      } else if (instrumentOption == InstrumentOption.ADVANCED) {
         NodeTraversal.traverse(
             compiler,
             rootNode,
             new AdvancedCoverageInstrumentationCallback(compiler, new HashMap<>()));
 
         return;
-      }
-      else {
+      } else {
         NodeTraversal.traverse(
             compiler, rootNode, new CoverageInstrumentationCallback(instrumentationData, reach));
       }

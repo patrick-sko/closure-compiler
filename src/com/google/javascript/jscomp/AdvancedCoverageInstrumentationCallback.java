@@ -38,16 +38,16 @@ public class AdvancedCoverageInstrumentationCallback extends
   @Override
   public void visit(NodeTraversal traversal, Node node, Node parent) {
     String fileName = traversal.getSourceName();
+    String sourceFileName = node.getSourceFileName();
 
     // If origin of node is not from sourceFile, do not instrument. This typically occurs when
     // polyfill code is injected into the sourceFile AST and this check avoids instrumenting it. We
     // avoid instrumentation as this callback does not distinguish between sourceFile code and
     // injected code and can result in an error.
-    if (!Objects.equals(fileName, node.getSourceFileName())) {
+    if (!Objects.equals(fileName, sourceFileName)) {
       return;
     }
 
-    String sourceFileName = node.getSourceFileName();
     // If Source File is base.js or INSTRUMENT_CODE_FILE_NAME, do not instrument as the instrument
     // function has not yet been defined when base.js will be executing and the implementation file
     // can not call the Code instrumentation function on itself

@@ -27,6 +27,7 @@ public class AdvancedCoverageInstrumentationCallback extends
   private final ParameterMapping parameterMapping;
   private final Map<String, AdvancedFileInstrumentationData> instrumentationData;
   private String functionName = "Anonymous";
+
   public AdvancedCoverageInstrumentationCallback(
       AbstractCompiler compiler, Map<String, AdvancedFileInstrumentationData> instrumentationData) {
     this.compiler = compiler;
@@ -144,6 +145,13 @@ public class AdvancedCoverageInstrumentationCallback extends
   }
 
   /**
+   * Only used for testing purposes.
+   */
+  public void setUniqueIdentifier(BigInteger val){
+    parameterMapping.nextUniqueIdentifier = val;
+  }
+
+  /**
    * A class the maintains a mapping of unique identifiers to parameter values. It also generates
    * unique identifiers by creating a counter starting form 0 and increments this value when
    * assigning a new unique identifier.
@@ -153,29 +161,20 @@ public class AdvancedCoverageInstrumentationCallback extends
     private BigInteger nextUniqueIdentifier;
     private final List<String> uniqueIdentifier;
     private final List<String> paramValue;
-    private String previousMapping;
 
     ParameterMapping() {
       nextUniqueIdentifier = new BigInteger("0");
       uniqueIdentifier = new ArrayList<>();
       paramValue = new ArrayList<>();
-      previousMapping = "";
     }
 
     public BigInteger getUniqueIdentifier(String param) {
-      if (previousMapping.equals(param)) {
-        return nextUniqueIdentifier;
-      }
-      previousMapping = param;
+
       nextUniqueIdentifier = nextUniqueIdentifier.add(new BigInteger("1"));
       return nextUniqueIdentifier;
     }
 
     public void addParamMapping(String identifier, String param) {
-      if (previousMapping.equals(param)) {
-        return;
-      }
-      previousMapping = param;
       uniqueIdentifier.add(identifier);
       paramValue.add(param);
     }

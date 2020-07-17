@@ -19,7 +19,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
-public final class AdvanedCoverageInstrumentationPassIntegrationTest extends IntegrationTestCase {
+public final class AdvancedCoverageInstrumentationPassIntegrationTest extends IntegrationTestCase {
 
 
   private final String instrumentCodeSource = lines("goog.module('instrument.code'); ",
